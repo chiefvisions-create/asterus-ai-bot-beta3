@@ -17,9 +17,19 @@ The following environment variables must be configured in your Railway project:
   - Format: `postgresql://user:password@host:port/database`
   - Railway will automatically provide this when you add a PostgreSQL database service
 
+### Authentication (Required for Auth0)
+
+- **`AUTH0_SECRET`** - Random secret for session encryption (generate with `openssl rand -hex 32`)
+- **`AUTH0_BASE_URL`** - Your application's base URL (e.g., `https://your-app.railway.app`)
+- **`AUTH0_ISSUER_BASE_URL`** - Your Auth0 tenant URL (e.g., `https://your-tenant.auth0.com`)
+- **`AUTH0_CLIENT_ID`** - Auth0 application client ID
+- **`AUTH0_CLIENT_SECRET`** - Auth0 application client secret
+
+**Note:** If Auth0 credentials are not provided, the application will start without authentication enabled.
+
 ### Optional Configuration
 
-- **`SESSION_SECRET`** - Secret key for session management (auto-generated if not provided)
+- **`SESSION_SECRET`** - (Deprecated: use AUTH0_SECRET instead) Secret key for session management
 - **`AI_INTEGRATIONS_OPENAI_API_KEY`** - OpenAI API key for AI-powered trading features
 - **`AI_INTEGRATIONS_OPENAI_BASE_URL`** - Custom OpenAI API base URL (optional)
 - **`PORT`** - Server port (Railway sets this automatically, default: 5000)
@@ -67,7 +77,43 @@ Or manually run migrations after deployment:
 railway run npm run db:push
 ```
 
-### 4. Configure Environment Variables (Optional)
+### 4. Configure Auth0 (Required for Authentication)
+
+To enable authentication, you need to set up an Auth0 application:
+
+1. **Create an Auth0 Account**
+   - Go to [Auth0](https://auth0.com/) and sign up or log in
+   - Create a new tenant if you don't have one
+
+2. **Create a New Application**
+   - In Auth0 Dashboard, go to "Applications" → "Applications"
+   - Click "Create Application"
+   - Choose "Regular Web Applications"
+   - Name it (e.g., "Astraeus Trading Bot")
+
+3. **Configure Application Settings**
+   - In your Auth0 application settings, add these URLs:
+     - **Allowed Callback URLs**: `https://your-app.railway.app/api/callback`
+     - **Allowed Logout URLs**: `https://your-app.railway.app`
+     - **Allowed Web Origins**: `https://your-app.railway.app`
+   - Replace `your-app.railway.app` with your actual Railway domain
+
+4. **Add Environment Variables to Railway**
+   - Copy the following from your Auth0 application settings:
+     - Domain → `AUTH0_ISSUER_BASE_URL` (e.g., `https://your-tenant.auth0.com`)
+     - Client ID → `AUTH0_CLIENT_ID`
+     - Client Secret → `AUTH0_CLIENT_SECRET`
+   - Generate a random secret for `AUTH0_SECRET`:
+     ```bash
+     openssl rand -hex 32
+     ```
+   - Set `AUTH0_BASE_URL` to your Railway app URL (e.g., `https://your-app.railway.app`)
+
+5. **Redeploy**
+   - After adding the environment variables, Railway will automatically redeploy
+   - Authentication will now be enabled
+
+### 5. Configure Environment Variables (Optional)
 
 Add any additional environment variables you need:
 
@@ -75,7 +121,7 @@ Add any additional environment variables you need:
 2. Click on the "Variables" tab
 3. Add variables like `AI_INTEGRATIONS_OPENAI_API_KEY` if you want AI features
 
-### 5. Deploy
+### 6. Deploy
 
 Railway will automatically deploy your app. The deployment process:
 
@@ -122,13 +168,25 @@ If the database connects but queries fail:
 
 ### Authentication Not Working
 
-Railway deployments don't support Replit authentication. You'll see a warning:
+If authentication is not working:
 
-```
-⚠️  REPL_ID not set - skipping Replit authentication setup.
-```
+1. **Check Auth0 Configuration**
+   - Verify all Auth0 environment variables are set correctly
+   - Ensure callback URLs match exactly (including protocol: `https://`)
+   - Check Auth0 application logs for any errors
 
-This is expected. The app will work without authentication, or you can implement alternative auth methods.
+2. **Missing Environment Variables**
+   - If Auth0 variables are not set, the app will log a warning:
+     ```
+     ⚠️  Auth0 credentials not set - authentication will be disabled.
+     ```
+   - This is expected if you haven't configured Auth0 yet
+   - The app will work without authentication, but protected routes will return 401
+
+3. **Session Issues**
+   - Ensure `AUTH0_SECRET` is set and consistent across deployments
+   - For multiple instances, all instances must use the same `AUTH0_SECRET`
+   - Check that `DATABASE_URL` is set for persistent session storage
 
 ## Monitoring and Logs
 

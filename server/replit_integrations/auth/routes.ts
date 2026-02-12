@@ -7,7 +7,11 @@ export function registerAuthRoutes(app: Express): void {
   // Get current authenticated user
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // With Auth0, user info is in req.oidc.user
+      const userId = req.oidc?.user?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
       const user = await authStorage.getUser(userId);
       res.json(user);
     } catch (error) {
