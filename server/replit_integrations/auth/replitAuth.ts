@@ -7,6 +7,8 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import memorystore from "memorystore";
+import crypto from "crypto";
 
 const getOidcConfig = memoize(
   async () => {
@@ -61,6 +63,53 @@ async function upsertUser(claims: any) {
 }
 
 export async function setupAuth(app: Express) {
+  // Skip Replit auth setup if not running on Replit (e.g., Railway deployment)
+  if (!process.env.REPL_ID) {
+    console.warn("⚠️  REPL_ID not set - skipping Replit authentication setup.");
+    console.warn("    For Railway deployments, authentication features will be disabled.");
+    console.warn("    To enable auth, consider implementing alternative authentication.");
+    
+    // Setup minimal session management without Replit auth
+    app.set("trust proxy", 1);
+    
+    // Generate or use SESSION_SECRET
+    let sessionSecret = process.env.SESSION_SECRET;
+    if (!sessionSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        // Generate a random session secret for production if not provided
+        // This is not ideal for multi-instance deployments but allows the app to start
+        sessionSecret = crypto.randomBytes(32).toString('hex');
+        console.warn("⚠️  SESSION_SECRET not set in production. Generated a random secret.");
+        console.warn("    For production deployments with multiple instances, set SESSION_SECRET to ensure");
+        console.warn("    sessions work across instances. Add SESSION_SECRET to your environment variables.");
+      } else {
+        sessionSecret = 'dev-secret-change-before-production';
+      }
+    }
+    
+    const MemoryStore = memorystore(session);
+    app.use(session({
+      secret: sessionSecret,
+      store: new MemoryStore({
+        checkPeriod: 86400000 // prune expired entries every 24h
+      }),
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      },
+    }));
+    app.use(passport.initialize());
+    app.use(passport.session());
+    
+    // Setup basic serialization (no actual auth)
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    return;
+  }
+  
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());

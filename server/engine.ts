@@ -3,10 +3,17 @@ import { storage } from "./storage";
 import { Bot, Trade } from "@shared/schema";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Lazy-load OpenAI client to avoid startup crash when API key is missing
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return _openai;
+}
 
 interface MarketIntelligence {
   newsHeadlines: string[];
@@ -813,7 +820,7 @@ export class TradingEngine {
       // Note: This uses AI to simulate market sentiment based on technical conditions
       // For production use, integrate with real APIs like Alternative.me Fear & Greed Index
       const newsCompletion = await Promise.race([
-        openai.chat.completions.create({
+        getOpenAI().chat.completions.create({
           model: "gpt-5-mini",
           messages: [{
             role: "system",
@@ -831,7 +838,7 @@ export class TradingEngine {
       
       // AI-estimated Fear & Greed based on technical conditions
       const fgCompletion = await Promise.race([
-        openai.chat.completions.create({
+        getOpenAI().chat.completions.create({
           model: "gpt-5-mini",
           messages: [{
             role: "system",
@@ -897,7 +904,7 @@ export class TradingEngine {
       // Note: For production, integrate with on-chain data providers like Glassnode, Whale Alert
       try {
         const whaleCompletion = await Promise.race([
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: "gpt-5-mini",
             messages: [{
               role: "system",
@@ -1160,7 +1167,7 @@ export class TradingEngine {
     aiAnalysis: { confidence: number; reasoning: string; riskLevel: string }
   ): Promise<AITradeNarrative> {
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5-mini",
         messages: [{
           role: "system",
@@ -2339,7 +2346,7 @@ Return JSON: {
         "Technological upgrade on major network improves transaction efficiency and scalability"
       ];
       
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5-mini",
         messages: [
           { 
@@ -2379,7 +2386,7 @@ Return JSON: {
       // Get learning context from recent trades
       const learningContext = await this.getTradePerformanceContext();
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [
           {
@@ -2570,7 +2577,7 @@ Perform full analysis and provide trading decision:`
       const low = Math.min(...recentPrices);
       const range = ((high - low) / low) * 100;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5-mini",
         messages: [
           {
@@ -4385,7 +4392,7 @@ Identify the chart pattern:`
   ): Promise<{ action: 'buy' | 'sell' | 'hold'; confidence: number }> {
     try {
       const completion = await Promise.race([
-        openai.chat.completions.create({
+        getOpenAI().chat.completions.create({
           model: "gpt-5-mini",
           messages: [{
             role: "system",
