@@ -12,8 +12,8 @@ async function upsertUserFromAuth0(userInfo: any) {
   await authStorage.upsertUser({
     id: userInfo.sub, // Auth0 user ID
     email: userInfo.email,
-    firstName: userInfo.given_name || userInfo.name?.split(' ')[0],
-    lastName: userInfo.family_name || userInfo.name?.split(' ').slice(1).join(' '),
+    firstName: userInfo.given_name || userInfo.name?.split(' ')[0] || '',
+    lastName: userInfo.family_name || userInfo.name?.split(' ').slice(1).join(' ') || '',
     profileImageUrl: userInfo.picture,
   });
 }
@@ -113,11 +113,11 @@ export async function setupAuth(app: Express) {
               createTableIfMissing: false,
               ttl: 7 * 24 * 60 * 60, // 1 week in seconds
               tableName: "sessions",
-            }) as any; // Type cast needed due to connect-pg-simple vs express-openid-connect type mismatch
+            }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
           })()
         : undefined, // Use default memory store if no DATABASE_URL
     },
-  } as any; // Type cast for ConfigParams compatibility
+  } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
   app.use(auth(config));
 

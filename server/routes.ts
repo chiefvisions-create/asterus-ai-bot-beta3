@@ -43,6 +43,14 @@ export async function registerRoutes(
     return req.oidc?.user || null;
   }
 
+  // Helper to generate author name from Auth0 user info
+  function getAuthorName(user: { given_name?: string; family_name?: string; name?: string; email?: string }): string {
+    if (user.given_name) {
+      return `${user.given_name}${user.family_name ? ' ' + user.family_name : ''}`;
+    }
+    return user.name || user.email?.split('@')[0] || "Anonymous";
+  }
+
   // Helper to get or verify user's bot
   async function getUserBot(req: any, res: any): Promise<any | null> {
     const userId = getUserId(req);
@@ -1288,16 +1296,12 @@ Base suggestions on actual performance data. If win rate is low, suggest improve
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const authorName = user.given_name 
-        ? `${user.given_name}${user.family_name ? ' ' + user.family_name : ''}`
-        : user.name || user.email?.split('@')[0] || "Anonymous";
-      
       const validated = insertForumTopicSchema.parse({
         categoryId: req.body.categoryId,
         title: req.body.title,
         content: req.body.content,
         authorId: user.sub,
-        authorName: authorName,
+        authorName: getAuthorName(user),
         authorAvatar: user.picture || req.body.authorAvatar,
         isPinned: req.body.isPinned || false,
         isLocked: req.body.isLocked || false,
@@ -1342,15 +1346,11 @@ Base suggestions on actual performance data. If win rate is low, suggest improve
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const authorName = user.given_name 
-        ? `${user.given_name}${user.family_name ? ' ' + user.family_name : ''}`
-        : user.name || user.email?.split('@')[0] || "Anonymous";
-      
       const validated = insertForumPostSchema.parse({
         topicId: parseInt(req.params.id),
         content: req.body.content,
         authorId: user.sub,
-        authorName: authorName,
+        authorName: getAuthorName(user),
         authorAvatar: user.picture || req.body.authorAvatar,
         isAnswer: req.body.isAnswer || false,
       });
