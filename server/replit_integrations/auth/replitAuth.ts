@@ -61,6 +61,38 @@ async function upsertUser(claims: any) {
 }
 
 export async function setupAuth(app: Express) {
+  // Skip Replit auth setup if not running on Replit (e.g., Railway deployment)
+  if (!process.env.REPL_ID) {
+    console.warn("⚠️  REPL_ID not set - skipping Replit authentication setup.");
+    console.warn("    For Railway deployments, authentication features will be disabled.");
+    console.warn("    To enable auth, consider implementing alternative authentication.");
+    
+    // Setup minimal session management without Replit auth
+    app.set("trust proxy", 1);
+    const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-change-in-production';
+    const MemoryStore = require('memorystore')(session);
+    app.use(session({
+      secret: sessionSecret,
+      store: new MemoryStore({
+        checkPeriod: 86400000 // prune expired entries every 24h
+      }),
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      },
+    }));
+    app.use(passport.initialize());
+    app.use(passport.session());
+    
+    // Setup basic serialization (no actual auth)
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+    return;
+  }
+  
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());

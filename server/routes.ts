@@ -10,10 +10,17 @@ import { getGitHubUser, createRepo, getRepo, pushFile, getFileContent } from "./
 import * as fs from "fs";
 import * as path from "path";
 
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Lazy-load OpenAI client to avoid startup crash when API key is missing
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+    });
+  }
+  return _openai;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -792,7 +799,7 @@ Provide helpful, educational responses about crypto trading. Be concise but info
         { role: "user" as const, content: message }
       ];
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages,
         max_completion_tokens: 500
@@ -919,7 +926,7 @@ Provide helpful, educational responses about crypto trading. Be concise but info
         return res.status(404).json({ message: "Trade not found" });
       }
       
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [
           {
@@ -1072,7 +1079,7 @@ Provide 3-5 specific, actionable strategy suggestions in JSON format:
 
 Base suggestions on actual performance data. If win rate is low, suggest improvements. If long trades outperform shorts, suggest focusing on long positions. Consider current market conditions.`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 1500,
@@ -1384,7 +1391,7 @@ For each article, provide JSON with these fields:
 
 Return ONLY valid JSON array, no markdown.`;
 
-      const response = await openai.chat.completions.create({
+      const response = await getOpenAI().chat.completions.create({
         model: "gpt-5.2",
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 2000
