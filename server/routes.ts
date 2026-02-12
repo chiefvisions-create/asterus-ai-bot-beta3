@@ -26,15 +26,34 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Setup Replit Auth (must be before other routes)
+  // Setup Auth0 authentication (must be before other routes)
   await setupAuth(app);
   registerAuthRoutes(app);
 
   const engine = TradingEngine.getInstance();
 
+  // Helper to get user ID from Auth0 session
+  function getUserId(req: any): string | null {
+    // Auth0 stores user info in req.oidc.user
+    return req.oidc?.user?.sub || null;
+  }
+
+  // Helper to get user info from Auth0 session for forum posts
+  function getUserInfo(req: any): { sub: string; email?: string; given_name?: string; family_name?: string; name?: string; picture?: string } | null {
+    return req.oidc?.user || null;
+  }
+
+  // Helper to generate author name from Auth0 user info
+  function getAuthorName(user: { given_name?: string; family_name?: string; name?: string; email?: string }): string {
+    if (user.given_name) {
+      return `${user.given_name}${user.family_name ? ' ' + user.family_name : ''}`;
+    }
+    return user.name || user.email?.split('@')[0] || "Anonymous";
+  }
+
   // Helper to get or verify user's bot
   async function getUserBot(req: any, res: any): Promise<any | null> {
-    const userId = req.user?.claims?.sub;
+    const userId = getUserId(req);
     if (!userId) {
       res.status(401).json({ message: "Not authenticated" });
       return null;
@@ -45,7 +64,7 @@ export async function registerRoutes(
 
   // Helper to verify bot ownership
   async function verifyBotOwnership(req: any, res: any, botId: number): Promise<any | null> {
-    const userId = req.user?.claims?.sub;
+    const userId = getUserId(req);
     if (!userId) {
       res.status(401).json({ message: "Not authenticated" });
       return null;
@@ -1272,18 +1291,18 @@ Base suggestions on actual performance data. If win rate is low, suggest improve
   // Create new topic
   app.post("/api/forum/topics", isAuthenticated, async (req: any, res) => {
     try {
-      const user = req.user?.claims;
-      const authorName = user?.first_name 
-        ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`
-        : user?.email?.split('@')[0] || "Anonymous";
+      const user = getUserInfo(req);
+      if (!user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
       
       const validated = insertForumTopicSchema.parse({
         categoryId: req.body.categoryId,
         title: req.body.title,
         content: req.body.content,
-        authorId: user?.sub,
-        authorName: authorName,
-        authorAvatar: user?.profile_image_url || req.body.authorAvatar,
+        authorId: user.sub,
+        authorName: getAuthorName(user),
+        authorAvatar: user.picture || req.body.authorAvatar,
         isPinned: req.body.isPinned || false,
         isLocked: req.body.isLocked || false,
         tags: req.body.tags || [],
@@ -1322,17 +1341,17 @@ Base suggestions on actual performance data. If win rate is low, suggest improve
   // Create new post (reply)
   app.post("/api/forum/topics/:id/posts", isAuthenticated, async (req: any, res) => {
     try {
-      const user = req.user?.claims;
-      const authorName = user?.first_name 
-        ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}`
-        : user?.email?.split('@')[0] || "Anonymous";
+      const user = getUserInfo(req);
+      if (!user) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
       
       const validated = insertForumPostSchema.parse({
         topicId: parseInt(req.params.id),
         content: req.body.content,
-        authorId: user?.sub,
-        authorName: authorName,
-        authorAvatar: user?.profile_image_url || req.body.authorAvatar,
+        authorId: user.sub,
+        authorName: getAuthorName(user),
+        authorAvatar: user.picture || req.body.authorAvatar,
         isAnswer: req.body.isAnswer || false,
       });
       const post = await storage.createForumPost(validated);
@@ -1483,9 +1502,12 @@ Return ONLY valid JSON array, no markdown.`;
         }
         
         // Create take profit order
+        const userId = getUserId(req);
+        if (!userId) return res.status(401).json({ message: "Not authenticated" });
+        
         const tpOrder = await storage.createPendingOrder({
           botId: bot.id,
-          userId: req.user.id,
+          userId,
           symbol,
           orderType: 'oco',
           side: 'sell',
@@ -1499,7 +1521,7 @@ Return ONLY valid JSON array, no markdown.`;
         // Create stop loss order, linked to TP
         const slOrder = await storage.createPendingOrder({
           botId: bot.id,
-          userId: req.user.id,
+          userId,
           symbol,
           orderType: 'oco',
           side: 'sell',
@@ -1524,9 +1546,12 @@ Return ONLY valid JSON array, no markdown.`;
       }
       
       // Regular pending order
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      
       const order = await storage.createPendingOrder({
         botId: bot.id,
-        userId: req.user.id,
+        userId,
         symbol,
         orderType,
         side,
@@ -1618,9 +1643,12 @@ Return ONLY valid JSON array, no markdown.`;
         return res.status(400).json({ message: "Upper price must be greater than lower price" });
       }
       
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+      
       const grid = await storage.createGridConfig({
         botId: bot.id,
-        userId: req.user.id,
+        userId,
         symbol,
         gridType: gridType || 'arithmetic',
         upperPrice,
@@ -1643,7 +1671,7 @@ Return ONLY valid JSON array, no markdown.`;
         // Create buy order at each grid level
         await storage.createPendingOrder({
           botId: bot.id,
-          userId: req.user.id,
+          userId,
           symbol,
           orderType: 'grid',
           side: 'buy',
@@ -1772,7 +1800,7 @@ Return ONLY valid JSON array, no markdown.`;
       
       const allocation = await storage.createPortfolioAllocation({
         botId: bot.id,
-        userId: req.user.id,
+        userId: getUserId(req) || bot.userId,
         symbol,
         targetPercent,
         rebalanceThreshold: rebalanceThreshold || 5
@@ -1829,7 +1857,7 @@ Return ONLY valid JSON array, no markdown.`;
       } else {
         schedule = await storage.createRebalanceSchedule({
           botId: bot.id,
-          userId: req.user.id,
+          userId: getUserId(req) || bot.userId,
           scheduleType: scheduleType || 'manual',
           isEnabled: isEnabled || false,
           thresholdPercent: thresholdPercent || 5

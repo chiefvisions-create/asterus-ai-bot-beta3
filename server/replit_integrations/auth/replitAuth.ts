@@ -1,87 +1,50 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
-import passport from "passport";
-import session from "express-session";
+import { auth, requiresAuth } from "express-openid-connect";
 import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
+import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
 import memorystore from "memorystore";
-import crypto from "crypto";
+import * as crypto from "crypto";
 
-const getOidcConfig = memoize(
-  async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
-  },
-  { maxAge: 3600 * 1000 }
-);
-
-export function getSession() {
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
-  return session({
-    secret: process.env.SESSION_SECRET!,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: true,
-      maxAge: sessionTtl,
-    },
-  });
-}
-
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
-}
-
-async function upsertUser(claims: any) {
+async function upsertUserFromAuth0(userInfo: any) {
+  // Auth0 user info has a different structure than Replit
+  // Map Auth0 user info to our database schema
   await authStorage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    id: userInfo.sub, // Auth0 user ID
+    email: userInfo.email,
+    firstName: userInfo.given_name || userInfo.name?.split(' ')[0] || '',
+    lastName: userInfo.family_name || userInfo.name?.split(' ').slice(1).join(' ') || '',
+    profileImageUrl: userInfo.picture,
   });
 }
 
 export async function setupAuth(app: Express) {
-  // Skip Replit auth setup if not running on Replit (e.g., Railway deployment)
-  if (!process.env.REPL_ID) {
-    console.warn("⚠️  REPL_ID not set - skipping Replit authentication setup.");
-    console.warn("    For Railway deployments, authentication features will be disabled.");
-    console.warn("    To enable auth, consider implementing alternative authentication.");
+  // Check if Auth0 credentials are configured
+  const hasAuth0Config = !!(
+    process.env.AUTH0_ISSUER_BASE_URL &&
+    process.env.AUTH0_CLIENT_ID &&
+    process.env.AUTH0_CLIENT_SECRET
+  );
+
+  if (!hasAuth0Config) {
+    console.warn("⚠️  Auth0 credentials not set - authentication will be disabled.");
+    console.warn("    Required environment variables:");
+    console.warn("    - AUTH0_SECRET");
+    console.warn("    - AUTH0_BASE_URL (your app's URL)");
+    console.warn("    - AUTH0_ISSUER_BASE_URL (your Auth0 tenant URL)");
+    console.warn("    - AUTH0_CLIENT_ID");
+    console.warn("    - AUTH0_CLIENT_SECRET");
+    console.warn("    For Railway deployments, add these to your environment variables.");
     
-    // Setup minimal session management without Replit auth
+    // Setup minimal session management without auth
     app.set("trust proxy", 1);
     
     // Generate or use SESSION_SECRET
-    let sessionSecret = process.env.SESSION_SECRET;
+    let sessionSecret = process.env.SESSION_SECRET || process.env.AUTH0_SECRET;
     if (!sessionSecret) {
       if (process.env.NODE_ENV === 'production') {
-        // Generate a random session secret for production if not provided
-        // This is not ideal for multi-instance deployments but allows the app to start
         sessionSecret = crypto.randomBytes(32).toString('hex');
         console.warn("⚠️  SESSION_SECRET not set in production. Generated a random secret.");
-        console.warn("    For production deployments with multiple instances, set SESSION_SECRET to ensure");
-        console.warn("    sessions work across instances. Add SESSION_SECRET to your environment variables.");
       } else {
         sessionSecret = 'dev-secret-change-before-production';
       }
@@ -91,119 +54,93 @@ export async function setupAuth(app: Express) {
     app.use(session({
       secret: sessionSecret,
       store: new MemoryStore({
-        checkPeriod: 86400000 // prune expired entries every 24h
+        checkPeriod: 86400000
       }),
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     }));
-    app.use(passport.initialize());
-    app.use(passport.session());
     
-    // Setup basic serialization (no actual auth)
-    passport.serializeUser((user: Express.User, cb) => cb(null, user));
-    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
     return;
   }
   
+  // Auth0 is configured - set up authentication
   app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  const config = await getOidcConfig();
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  // Keep track of registered strategies
-  const registeredStrategies = new Set<string>();
-
-  // Helper function to ensure strategy exists for a domain
-  const ensureStrategy = (domain: string) => {
-    const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
-      const strategy = new Strategy(
-        {
-          name: strategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
-        },
-        verify
-      );
-      passport.use(strategy);
-      registeredStrategies.add(strategyName);
+  
+  // Get or generate AUTH0_SECRET
+  let auth0Secret = process.env.AUTH0_SECRET;
+  if (!auth0Secret) {
+    if (process.env.NODE_ENV === 'production') {
+      auth0Secret = crypto.randomBytes(32).toString('hex');
+      console.warn("⚠️  AUTH0_SECRET not set. Generated a random secret.");
+      console.warn("    Set AUTH0_SECRET environment variable for multi-instance deployments.");
+    } else {
+      auth0Secret = 'dev-secret-change-before-production';
     }
-  };
+  }
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  // Configure Auth0
+  const config = {
+    authRequired: false, // We'll handle auth per route
+    auth0Logout: true,
+    secret: auth0Secret,
+    baseURL: process.env.AUTH0_BASE_URL || `http://localhost:${process.env.PORT || 5000}`,
+    clientID: process.env.AUTH0_CLIENT_ID!,
+    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL!,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+    authorizationParams: {
+      response_type: 'code',
+      scope: 'openid profile email',
+    },
+    routes: {
+      login: '/api/login',
+      logout: '/api/logout',
+      callback: '/api/callback',
+      postLogoutRedirect: '/',
+    },
+    session: {
+      rolling: true,
+      rollingDuration: 7 * 24 * 60 * 60, // 1 week in seconds
+      store: process.env.DATABASE_URL 
+        ? (() => {
+            const pgStore = connectPg(session);
+            return new pgStore({
+              conString: process.env.DATABASE_URL,
+              createTableIfMissing: false,
+              ttl: 7 * 24 * 60 * 60, // 1 week in seconds
+              tableName: "sessions",
+            }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
+          })()
+        : undefined, // Use default memory store if no DATABASE_URL
+    },
+  } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
-  app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+  app.use(auth(config));
+
+  // Middleware to sync Auth0 user to our database
+  app.use(async (req: any, res, next) => {
+    if (req.oidc?.isAuthenticated() && req.oidc.user) {
+      try {
+        await upsertUserFromAuth0(req.oidc.user);
+      } catch (error) {
+        console.error("Failed to sync user to database:", error);
+      }
+    }
+    next();
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, next);
-  });
-
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
-    });
-  });
+  console.log("✅ Auth0 authentication configured successfully");
 }
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
+export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
+  // Check if Auth0 is configured and user is authenticated
+  if (req.oidc?.isAuthenticated && req.oidc.isAuthenticated()) {
     return next();
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  return res.status(401).json({ message: "Unauthorized" });
 };
