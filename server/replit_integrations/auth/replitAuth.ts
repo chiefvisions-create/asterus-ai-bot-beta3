@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
+import memorystore from "memorystore";
 
 const getOidcConfig = memoize(
   async () => {
@@ -69,8 +70,23 @@ export async function setupAuth(app: Express) {
     
     // Setup minimal session management without Replit auth
     app.set("trust proxy", 1);
-    const sessionSecret = process.env.SESSION_SECRET || 'fallback-secret-change-in-production';
-    const MemoryStore = require('memorystore')(session);
+    
+    // Generate or use SESSION_SECRET
+    let sessionSecret = process.env.SESSION_SECRET;
+    if (!sessionSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        // Generate a random session secret for production if not provided
+        // This is not ideal for multi-instance deployments but allows the app to start
+        sessionSecret = require('crypto').randomBytes(32).toString('hex');
+        console.warn("⚠️  SESSION_SECRET not set in production. Generated a random secret.");
+        console.warn("    For production deployments with multiple instances, set SESSION_SECRET to ensure");
+        console.warn("    sessions work across instances. Add SESSION_SECRET to your environment variables.");
+      } else {
+        sessionSecret = 'dev-secret-change-before-production';
+      }
+    }
+    
+    const MemoryStore = memorystore(session);
     app.use(session({
       secret: sessionSecret,
       store: new MemoryStore({
