@@ -69,7 +69,7 @@ export async function setupAuth(app: Express) {
     // These routes inform users that authentication is not set up
     app.get('/api/login', (req, res) => {
       res.status(503).json({
-        message: "Authentication is not configured. Please set up Auth0 environment variables.",
+        message: "Authentication is not configured. Please set up Auth0 environment variables in your .env file or environment settings.",
         required: [
           "AUTH0_ISSUER_BASE_URL",
           "AUTH0_CLIENT_ID",
