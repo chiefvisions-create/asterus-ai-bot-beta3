@@ -82,7 +82,10 @@ export async function setupAuth(app: Express) {
     
     app.get('/api/logout', (req, res) => {
       if (req.session) {
-        req.session.destroy(() => {
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Failed to destroy session:', err);
+          }
           res.redirect('/');
         });
       } else {
