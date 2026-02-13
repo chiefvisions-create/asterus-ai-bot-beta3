@@ -153,19 +153,22 @@ export async function setupAuth(app: Express) {
     },
   } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
-  // Add 405 handler for unsupported methods on /api/login BEFORE auth middleware
-  app.all('/api/login', (req, res, next) => {
-    if (req.method !== 'GET') {
-      res.set('Allow', 'GET');
-      return res.status(405).json({ 
-        message: "Method not allowed - use GET to initiate login",
-        allowedMethods: ["GET"]
-      });
-    }
-    next();
-  });
-
   app.use(auth(config));
+
+  // Add 405 handlers for unsupported methods on /api/login AFTER auth middleware
+  // The auth() middleware handles GET, so we reject all other methods
+  const unsupportedMethodHandler = (req: any, res: any) => {
+    res.set('Allow', 'GET');
+    res.status(405).json({ 
+      message: "Method not allowed - use GET to initiate login",
+      allowedMethods: ["GET"]
+    });
+  };
+  
+  app.post('/api/login', unsupportedMethodHandler);
+  app.put('/api/login', unsupportedMethodHandler);
+  app.delete('/api/login', unsupportedMethodHandler);
+  app.patch('/api/login', unsupportedMethodHandler);
 
   // Middleware to sync Auth0 user to our database
   app.use(async (req: any, res, next) => {
