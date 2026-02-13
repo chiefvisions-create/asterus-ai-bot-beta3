@@ -8,7 +8,8 @@ async function getCurrentUser(req: Request, res: Response): Promise<void> {
     // With Auth0, user info is in req.oidc.user
     const userId = (req as any).oidc?.user?.sub;
     if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
+      res.status(401).json({ message: "User ID not found" });
+      return;
     }
     const user = await authStorage.getUser(userId);
     res.json(user);
