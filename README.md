@@ -59,7 +59,7 @@ Quick start:
    - `DATABASE_URL` - PostgreSQL connection string
    
    **Required for Authentication:**
-   - `AUTH0_SECRET` - Random secret for session encryption (generate with `openssl rand -hex 32`)
+   - `AUTH0_SECRET` - Random secret for session encryption (generate with `openssl rand -base64 32`)
    - `AUTH0_BASE_URL` - Your app's URL (e.g., `http://localhost:5000`)
    - `AUTH0_ISSUER_BASE_URL` - Your Auth0 tenant URL (e.g., `https://your-tenant.auth0.com`)
    - `AUTH0_CLIENT_ID` - Auth0 application client ID
