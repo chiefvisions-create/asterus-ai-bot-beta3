@@ -19,11 +19,26 @@ The following environment variables must be configured in your Railway project:
 
 ### Authentication (Required for Auth0)
 
-- **`AUTH0_SECRET`** - Random secret for session encryption (generate with `openssl rand -hex 32`)
-- **`AUTH0_BASE_URL`** - Your application's base URL (e.g., `https://your-app.railway.app`)
-- **`AUTH0_ISSUER_BASE_URL`** - Your Auth0 tenant URL (e.g., `https://your-tenant.auth0.com`)
+All five variables below are required for Auth0 authentication to work:
+
+- **`AUTH0_SECRET`** - Random secret for session encryption
+  - Generate with: `openssl rand -base64 32` (recommended) or `openssl rand -hex 32`
+  - ⚠️ **Keep secure, never commit to git**
+  
+- **`AUTH0_BASE_URL`** - Your application's base URL
+  - Example: `https://your-app.railway.app`
+  - Used for Auth0 callback redirects
+  
+- **`AUTH0_ISSUER_BASE_URL`** - Your Auth0 tenant URL
+  - Format: `https://your-tenant.auth0.com` or `https://your-tenant.us.auth0.com`
+  - Example: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
+  
 - **`AUTH0_CLIENT_ID`** - Auth0 application client ID
-- **`AUTH0_CLIENT_SECRET`** - ⚠️ Auth0 application client secret (**MUST be set as Railway environment variable - NEVER commit to repository**)
+  - Public identifier for your Auth0 application
+  
+- **`AUTH0_CLIENT_SECRET`** - Auth0 application client secret
+  - ⚠️ **MUST be set as Railway environment variable - NEVER commit to repository**
+  - ⚠️ **If exposed**, rotate immediately in Auth0 Dashboard (Applications → Settings → Rotate Client Secret)
 
 **Note:** If Auth0 credentials are not provided, the application will start without authentication enabled. When users attempt to access `/api/login`, they will receive a clear message indicating that authentication is not configured along with the list of required environment variables.
 
@@ -79,55 +94,68 @@ railway run npm run db:push
 
 ### 4. Configure Auth0 (Required for Authentication)
 
-This project is pre-configured with an Auth0 application. Follow these steps to deploy:
+This project uses Auth0 for secure user authentication. Follow these steps to configure Auth0 for your Railway deployment:
 
-1. **Auth0 Application Details**
-   - **Auth0 Domain**: `dev-ejjwtoxn7b3krvga.us.auth0.com`
-   - **Client ID**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-   - **Client Secret**: Available separately (see step 3 below)
+#### Prerequisites
 
-2. **Configure Application Settings in Auth0**
-   - In Auth0 Dashboard, navigate to the application with Client ID `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-   - Update the following URLs to match your Railway domain:
-To enable authentication, you need to configure Auth0 in your Railway environment variables.
-
-**Auth0 Application Details for this Deployment:**
+**Auth0 Application Details for this Project:**
 - **Auth0 Domain**: `dev-ejjwtoxn7b3krvga.us.auth0.com`
 - **Client ID**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-- **Client Secret**: ⚠️ **DO NOT COMMIT** - Set as Railway environment variable only
+- **Client Secret**: Contact the project admin for this value (⚠️ **NEVER commit to git**)
 
-1. **Configure Application Settings in Auth0 Dashboard**
-   - In the Auth0 application settings for this deployment, ensure these URLs are configured:
-     - **Allowed Callback URLs**: `https://your-app.railway.app/api/callback`
-     - **Allowed Logout URLs**: `https://your-app.railway.app`
-     - **Allowed Web Origins**: `https://your-app.railway.app`
-   - Replace `your-app.railway.app` with your actual Railway domain
+#### Step 1: Configure Auth0 Application Settings
 
-3. **Add Environment Variables to Railway**
-   
-   Set the following environment variables in Railway:
-   
-   - **`AUTH0_ISSUER_BASE_URL`**: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
-   - **`AUTH0_CLIENT_ID`**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-   - **`AUTH0_CLIENT_SECRET`**: Contact the project admin or check your team's secure secrets management system for this value.
-     
-     ⚠️ **IMPORTANT**: Set this as a Railway environment variable or GitHub secret. **Never commit this value to the repository.**
-   
-2. **Add Environment Variables to Railway**
-   
-   In your Railway project, go to the "Variables" tab and add the following environment variables:
-   
-   - **`AUTH0_ISSUER_BASE_URL`**: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
-   - **`AUTH0_CLIENT_ID`**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-   - **`AUTH0_CLIENT_SECRET`**: ⚠️ **Set this in Railway environment variables only** - Get the secret value from your Auth0 application settings (Applications → Astraeus Trading Bot → Settings → Client Secret)
-   - **`AUTH0_SECRET`**: Generate a random secret:
-     ```bash
-     openssl rand -hex 32
-     ```
-   
-   - **`AUTH0_BASE_URL`**: Set to your Railway app URL (e.g., `https://your-app.railway.app`)
+After deploying your Railway app, you'll receive a Railway URL (e.g., `https://your-app.railway.app`). Use this URL to configure your Auth0 application:
 
-4. **Redeploy**
+1. Go to [Auth0 Dashboard](https://manage.auth0.com/)
+2. Navigate to: **Applications** → Select the application with Client ID `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao` → **Settings**
+3. Update the following fields (replace `your-app` with your actual Railway subdomain):
+   - **Allowed Callback URLs**: `https://your-app.railway.app/api/callback`
+   - **Allowed Logout URLs**: `https://your-app.railway.app`
+   - **Allowed Web Origins**: `https://your-app.railway.app`
+4. Click **Save Changes**
+
+#### Step 2: Set Environment Variables in Railway
+
+In your Railway project, go to the **Variables** tab and add the following environment variables:
+
+**Required Auth0 Variables:**
+
+- **`AUTH0_ISSUER_BASE_URL`**
+  - Value: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
+  - Description: Your Auth0 tenant domain
+
+- **`AUTH0_CLIENT_ID`**
+  - Value: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+  - Description: Auth0 application client ID (public identifier)
+
+- **`AUTH0_CLIENT_SECRET`**
+  - Value: Contact project admin for this value
+  - Description: Auth0 application client secret
+  - ⚠️ **CRITICAL**: Set this ONLY in Railway environment variables, NEVER commit to git
+  - ⚠️ **If Exposed**: If this secret is accidentally exposed, rotate it immediately:
+    - Go to Auth0 Dashboard → Applications → [Your App] → Settings
+    - Click **Rotate** next to Client Secret
+    - Update the Railway environment variable with the new secret
+    - Redeploy your application
+
+- **`AUTH0_SECRET`**
+  - Value: Generate a secure random string using:
+    ```bash
+    openssl rand -base64 32
+    ```
+    or
+    ```bash
+    openssl rand -hex 32
+    ```
+  - Description: Secret for session encryption
+  - ⚠️ Keep this secret secure and never commit it to version control
+
+- **`AUTH0_BASE_URL`**
+  - Value: `https://your-app.railway.app` (replace with your actual Railway URL)
+  - Description: Your application's public URL for Auth0 callbacks
+
+#### Step 3: Redeploy
    - After adding the environment variables, Railway will automatically redeploy
    - Authentication will now be enabled
 
