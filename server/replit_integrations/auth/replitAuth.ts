@@ -134,10 +134,11 @@ export async function setupAuth(app: Express) {
     session: {
       rolling: true,
       rollingDuration: 7 * 24 * 60 * 60, // 1 week in seconds
+      absoluteDuration: 7 * 24 * 60 * 60, // Absolute session timeout: 1 week
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
+        sameSite: 'lax', // Lowercase for consistency
       },
       store: process.env.DATABASE_URL 
         ? (() => {
@@ -150,6 +151,18 @@ export async function setupAuth(app: Express) {
             }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
           })()
         : undefined, // Use default memory store if no DATABASE_URL
+    },
+    afterCallback: async (_req: any, _res: any, session: any, state: any) => {
+      // Ensure session is saved before redirect
+      // Return the session to be saved by the middleware
+      return session;
+    },
+    getLoginState: (req: any, options: any) => {
+      // Support returnTo parameter for post-login redirects
+      // This allows /api/login?returnTo=/some-page to redirect to that page after auth
+      return {
+        returnTo: req.query.returnTo || options.returnTo || '/',
+      };
     },
   } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
