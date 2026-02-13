@@ -112,6 +112,9 @@ export async function setupAuth(app: Express) {
     }
   }
 
+  // Session duration configuration (1 week)
+  const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60;
+
   // Configure Auth0
   const config = {
     authRequired: false, // We'll handle auth per route
@@ -133,23 +136,31 @@ export async function setupAuth(app: Express) {
     },
     session: {
       rolling: true,
-      rollingDuration: 7 * 24 * 60 * 60, // 1 week in seconds
+      rollingDuration: SESSION_DURATION_SECONDS,
+      absoluteDuration: SESSION_DURATION_SECONDS,
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax',
+        sameSite: 'lax', // Lowercase for consistency
       },
       store: process.env.DATABASE_URL 
         ? (() => {
             const pgStore = connectPg(session);
             return new pgStore({
               conString: process.env.DATABASE_URL,
-              createTableIfMissing: false,
-              ttl: 7 * 24 * 60 * 60, // 1 week in seconds
+              createTableIfMissing: true, // Auto-create sessions table if missing
+              ttl: SESSION_DURATION_SECONDS,
               tableName: "sessions",
             }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
           })()
         : undefined, // Use default memory store if no DATABASE_URL
+    },
+    getLoginState: (req: any, options: any) => {
+      // Support returnTo parameter for post-login redirects
+      // This allows /api/login?returnTo=/some-page to redirect to that page after auth
+      return {
+        returnTo: req.query.returnTo || options.returnTo || '/',
+      };
     },
   } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
