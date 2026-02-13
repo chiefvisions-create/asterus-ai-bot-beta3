@@ -112,6 +112,9 @@ export async function setupAuth(app: Express) {
     }
   }
 
+  // Session duration configuration (1 week)
+  const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60;
+
   // Configure Auth0
   const config = {
     authRequired: false, // We'll handle auth per route
@@ -133,8 +136,8 @@ export async function setupAuth(app: Express) {
     },
     session: {
       rolling: true,
-      rollingDuration: 7 * 24 * 60 * 60, // 1 week in seconds
-      absoluteDuration: 7 * 24 * 60 * 60, // Absolute session timeout: 1 week
+      rollingDuration: SESSION_DURATION_SECONDS,
+      absoluteDuration: SESSION_DURATION_SECONDS,
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -146,16 +149,11 @@ export async function setupAuth(app: Express) {
             return new pgStore({
               conString: process.env.DATABASE_URL,
               createTableIfMissing: true, // Auto-create sessions table if missing
-              ttl: 7 * 24 * 60 * 60, // 1 week in seconds
+              ttl: SESSION_DURATION_SECONDS,
               tableName: "sessions",
             }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
           })()
         : undefined, // Use default memory store if no DATABASE_URL
-    },
-    afterCallback: async (_req: any, _res: any, session: any, state: any) => {
-      // Ensure session is saved before redirect
-      // Return the session to be saved by the middleware
-      return session;
     },
     getLoginState: (req: any, options: any) => {
       // Support returnTo parameter for post-login redirects
