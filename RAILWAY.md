@@ -237,7 +237,7 @@ If authentication is not working:
    - **Note**: The application is configured with proper cookie settings for Railway's proxy environment, including:
      - `httpOnly: true` - Prevents client-side JavaScript access
      - `secure: true` - Ensures cookies are only sent over HTTPS in production
-     - `sameSite: 'lax'` - Provides CSRF protection while allowing authentication flows
+     - `sameSite: 'Lax'` - Provides CSRF protection while allowing authentication flows
    - These settings ensure sessions persist correctly after Auth0 callback redirects
 
 ## Monitoring and Logs
