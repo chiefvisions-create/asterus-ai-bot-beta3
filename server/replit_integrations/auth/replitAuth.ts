@@ -153,6 +153,17 @@ export async function setupAuth(app: Express) {
     },
   } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
+  // Add 405 handler for unsupported methods on /api/login BEFORE auth middleware
+  app.all('/api/login', (req, res, next) => {
+    if (req.method !== 'GET') {
+      return res.status(405).json({ 
+        message: "Method Not Allowed. Use GET to initiate login.",
+        allowedMethods: ["GET"]
+      });
+    }
+    next();
+  });
+
   app.use(auth(config));
 
   // Middleware to sync Auth0 user to our database
