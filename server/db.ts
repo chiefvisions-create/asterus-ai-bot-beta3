@@ -5,13 +5,20 @@ import * as schema from "@shared/schema";
 // Check if DATABASE_URL is set
 const databaseUrl = process.env.DATABASE_URL;
 
-// Warn if DATABASE_URL is not set, but don't crash immediately
+// In production, fail fast if DATABASE_URL is missing — the app cannot function without it.
+// In dev, warn but allow startup so non-DB features can still be tested.
 if (!databaseUrl) {
-  console.warn("⚠️  DATABASE_URL is not set. Database operations will fail.");
-  console.warn("    To fix this, set the DATABASE_URL environment variable:");
-  console.warn("    - For Railway: Add a PostgreSQL database service and connect it to your app");
-  console.warn("    - For local development: Set DATABASE_URL in your .env file");
-  console.warn("    - Format: postgresql://user:password@host:port/database");
+  if (process.env.NODE_ENV === 'production') {
+    console.error("❌  FATAL: DATABASE_URL is not set. Cannot start in production without a database.");
+    console.error("    Railway: Add a PostgreSQL database service and link it to your app service.");
+    console.error("    The DATABASE_URL variable will be injected automatically once connected.");
+    process.exit(1);
+  } else {
+    console.warn("⚠️  DATABASE_URL is not set. Database operations will fail.");
+    console.warn("    To fix this, set the DATABASE_URL environment variable:");
+    console.warn("    - For local development: Set DATABASE_URL in your .env file");
+    console.warn("    - Format: postgresql://user:password@host:port/database");
+  }
 }
 
 // Create client - will throw error on first use if DATABASE_URL is not set
