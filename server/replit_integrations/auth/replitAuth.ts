@@ -65,6 +65,34 @@ export async function setupAuth(app: Express) {
       },
     }));
     
+    // Register fallback routes for /api/login and /api/logout when Auth0 is not configured
+    // These routes inform users that authentication is not set up
+    app.get('/api/login', (req, res) => {
+      res.status(503).json({
+        message: "Authentication is not configured. Please set up Auth0 environment variables in your .env file or environment settings.",
+        required: [
+          "AUTH0_ISSUER_BASE_URL",
+          "AUTH0_CLIENT_ID",
+          "AUTH0_CLIENT_SECRET",
+          "AUTH0_SECRET",
+          "AUTH0_BASE_URL"
+        ]
+      });
+    });
+    
+    app.get('/api/logout', (req, res) => {
+      if (req.session) {
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Failed to destroy session:', err);
+          }
+          res.redirect('/');
+        });
+      } else {
+        res.redirect('/');
+      }
+    });
+    
     return;
   }
   

@@ -25,7 +25,7 @@ The following environment variables must be configured in your Railway project:
 - **`AUTH0_CLIENT_ID`** - Auth0 application client ID
 - **`AUTH0_CLIENT_SECRET`** - Auth0 application client secret
 
-**Note:** If Auth0 credentials are not provided, the application will start without authentication enabled.
+**Note:** If Auth0 credentials are not provided, the application will start without authentication enabled. When users attempt to access `/api/login`, they will receive a clear message indicating that authentication is not configured along with the list of required environment variables.
 
 ### Optional Configuration
 
@@ -181,6 +181,7 @@ If authentication is not working:
      ⚠️  Auth0 credentials not set - authentication will be disabled.
      ```
    - This is expected if you haven't configured Auth0 yet
+   - When users click the login button, they will receive a JSON response explaining that authentication is not configured and listing the required environment variables
    - The app will work without authentication, but protected routes will return 401
 
 3. **Session Issues**
