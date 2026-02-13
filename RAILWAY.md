@@ -79,6 +79,16 @@ railway run npm run db:push
 
 ### 4. Configure Auth0 (Required for Authentication)
 
+This project is pre-configured with an Auth0 application. Follow these steps to deploy:
+
+1. **Auth0 Application Details**
+   - **Auth0 Domain**: `dev-ejjwtoxn7b3krvga.us.auth0.com`
+   - **Client ID**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - **Client Secret**: Available separately (see step 3 below)
+
+2. **Configure Application Settings in Auth0**
+   - In Auth0 Dashboard, navigate to the application with Client ID `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - Update the following URLs to match your Railway domain:
 To enable authentication, you need to configure Auth0 in your Railway environment variables.
 
 **Auth0 Application Details for this Deployment:**
@@ -93,6 +103,16 @@ To enable authentication, you need to configure Auth0 in your Railway environmen
      - **Allowed Web Origins**: `https://your-app.railway.app`
    - Replace `your-app.railway.app` with your actual Railway domain
 
+3. **Add Environment Variables to Railway**
+   
+   Set the following environment variables in Railway:
+   
+   - **`AUTH0_ISSUER_BASE_URL`**: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
+   - **`AUTH0_CLIENT_ID`**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - **`AUTH0_CLIENT_SECRET`**: Contact the project admin or check your team's secure secrets management system for this value.
+     
+     ⚠️ **IMPORTANT**: Set this as a Railway environment variable or GitHub secret. **Never commit this value to the repository.**
+   
 2. **Add Environment Variables to Railway**
    
    In your Railway project, go to the "Variables" tab and add the following environment variables:
@@ -104,12 +124,11 @@ To enable authentication, you need to configure Auth0 in your Railway environmen
      ```bash
      openssl rand -hex 32
      ```
-   - **`AUTH0_BASE_URL`**: Set to your Railway app URL (e.g., `https://your-app.railway.app`)
    
-   **Security Note**: Never commit `AUTH0_CLIENT_SECRET` to version control. It must only be set as an environment variable in Railway.
+   - **`AUTH0_BASE_URL`**: Set to your Railway app URL (e.g., `https://your-app.railway.app`)
 
-3. **Redeploy**
-   - After adding all the environment variables, Railway will automatically redeploy
+4. **Redeploy**
+   - After adding the environment variables, Railway will automatically redeploy
    - Authentication will now be enabled
 
 ### 5. Configure Environment Variables (Optional)
