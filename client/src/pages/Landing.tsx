@@ -23,6 +23,7 @@ export default function Landing() {
             <span className="font-display text-base sm:text-xl font-bold tracking-tight">Astraeus AI</span>
           </div>
           <Button
+            type="button"
             onClick={() => window.location.href = '/api/login'}
             className="h-8 sm:h-10 px-3 sm:px-6 font-display text-[9px] sm:text-[10px] tracking-[0.2em] sm:tracking-[0.3em] bg-primary hover:bg-primary/80 text-black uppercase rounded-none"
             data-testid="button-login-nav"
@@ -53,6 +54,7 @@ export default function Landing() {
 
           <div className="flex flex-col gap-3 sm:gap-4 justify-center px-4 sm:px-0">
             <Button
+              type="button"
               onClick={() => window.location.href = '/api/login'}
               className="h-12 sm:h-14 px-6 sm:px-10 font-display text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] bg-primary hover:bg-primary/80 text-black uppercase rounded-none w-full sm:w-auto sm:mx-auto"
               data-testid="button-get-started"
@@ -112,6 +114,7 @@ export default function Landing() {
           <h2 className="text-xl sm:text-3xl font-display font-bold text-white mb-3 sm:mb-4">Ready to Start Trading?</h2>
           <p className="text-white/50 text-sm sm:text-base mb-6 sm:mb-8">Sign in to access your personal trading terminal</p>
           <Button
+            type="button"
             onClick={() => window.location.href = '/api/login'}
             className="h-11 sm:h-12 px-6 sm:px-8 font-display text-[9px] sm:text-[10px] tracking-[0.3em] sm:tracking-[0.4em] bg-white/5 hover:bg-primary text-white hover:text-black border border-white/10 hover:border-primary uppercase rounded-none transition-all w-full sm:w-auto"
             data-testid="button-signin-cta"

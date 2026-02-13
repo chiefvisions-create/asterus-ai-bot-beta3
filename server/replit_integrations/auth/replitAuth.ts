@@ -1,5 +1,5 @@
 import { auth, requiresAuth } from "express-openid-connect";
-import type { Express, RequestHandler } from "express";
+import type { Express, RequestHandler, Request, Response } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { authStorage } from "./storage";
@@ -154,6 +154,21 @@ export async function setupAuth(app: Express) {
   } as any; // Type cast: ConfigParams type from express-openid-connect has stricter session store typing
 
   app.use(auth(config));
+
+  // Add 405 handlers for unsupported methods on /api/login AFTER auth middleware
+  // The auth() middleware handles GET, so we reject all other methods
+  const unsupportedMethodHandler = (_req: Request, res: Response) => {
+    res.set('Allow', 'GET');
+    res.status(405).json({ 
+      message: "Method not allowed. Use GET to initiate login.",
+      allowedMethods: ["GET"]
+    });
+  };
+  
+  app.post('/api/login', unsupportedMethodHandler);
+  app.put('/api/login', unsupportedMethodHandler);
+  app.delete('/api/login', unsupportedMethodHandler);
+  app.patch('/api/login', unsupportedMethodHandler);
 
   // Middleware to sync Auth0 user to our database
   app.use(async (req: any, res, next) => {
