@@ -100,7 +100,7 @@ This project is pre-configured with an Auth0 application. Follow these steps to 
    
    - **`AUTH0_ISSUER_BASE_URL`**: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
    - **`AUTH0_CLIENT_ID`**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
-   - **`AUTH0_CLIENT_SECRET`**: `h_rW3rvJH6xjHrgmjSA46HgCPXY5lUXJR_JlQEbbxvnrK5dRdKl3gJs5m_rW7MwB`
+   - **`AUTH0_CLIENT_SECRET`**: Contact the project admin or check your team's secure secrets management system for this value.
      
      ⚠️ **IMPORTANT**: Set this as a Railway environment variable or GitHub secret. **Never commit this value to the repository.**
    
