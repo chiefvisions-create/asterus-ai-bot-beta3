@@ -6,6 +6,21 @@ import { authStorage } from "./storage";
 import memorystore from "memorystore";
 import * as crypto from "crypto";
 
+/**
+ * Sanitize a sameSite value to the exact casing required by express-openid-connect.
+ * express-openid-connect validates that sameSite is one of: "Lax", "Strict", "None".
+ * This helper maps any case-insensitive input (or env var) to the correct form.
+ */
+function sanitizeSameSite(value: string | undefined): "Lax" | "Strict" | "None" {
+  const map: Record<string, "Lax" | "Strict" | "None"> = {
+    lax: "Lax",
+    strict: "Strict",
+    none: "None",
+  };
+  const normalized = map[(value || "").toLowerCase()];
+  return normalized || "Lax"; // Default to "Lax" if undefined/invalid
+}
+
 async function upsertUserFromAuth0(userInfo: any) {
   // Auth0 user info has a different structure than Replit
   // Map Auth0 user info to our database schema
@@ -19,6 +34,21 @@ async function upsertUserFromAuth0(userInfo: any) {
 }
 
 export async function setupAuth(app: Express) {
+  // ── DATABASE_URL startup check ─────────────────────────────────────────
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!process.env.DATABASE_URL) {
+    if (isProduction) {
+      console.error("❌  FATAL: DATABASE_URL is not set in production.");
+      console.error("    Railway: Add a PostgreSQL database service and connect it to your app.");
+      console.error("    The DATABASE_URL variable will be set automatically once connected.");
+      process.exit(1);
+    } else {
+      console.warn("⚠️  DATABASE_URL is not set. Database operations will fail.");
+      console.warn("    For local development, set DATABASE_URL in your .env file.");
+      console.warn("    Format: postgresql://user:password@host:port/database");
+    }
+  }
+
   // Check if Auth0 credentials are configured
   const hasAuth0Config = !!(
     process.env.AUTH0_ISSUER_BASE_URL &&
@@ -42,13 +72,15 @@ export async function setupAuth(app: Express) {
     // Generate or use SESSION_SECRET
     let sessionSecret = process.env.SESSION_SECRET || process.env.AUTH0_SECRET;
     if (!sessionSecret) {
-      if (process.env.NODE_ENV === 'production') {
+      if (isProduction) {
         sessionSecret = crypto.randomBytes(32).toString('hex');
         console.warn("⚠️  SESSION_SECRET not set in production. Generated a random secret.");
       } else {
         sessionSecret = 'dev-secret-change-before-production';
       }
     }
+    
+    const sessionSecureCookie = isProduction;
     
     const MemoryStore = memorystore(session);
     app.use(session({
@@ -60,8 +92,8 @@ export async function setupAuth(app: Express) {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: sessionSecureCookie,
+        sameSite: 'lax', // express-session uses lowercase
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     }));
@@ -103,7 +135,7 @@ export async function setupAuth(app: Express) {
   // Get or generate AUTH0_SECRET
   let auth0Secret = process.env.AUTH0_SECRET;
   if (!auth0Secret) {
-    if (process.env.NODE_ENV === 'production') {
+    if (isProduction) {
       auth0Secret = crypto.randomBytes(32).toString('hex');
       console.warn("⚠️  AUTH0_SECRET not set. Generated a random secret.");
       console.warn("    Set AUTH0_SECRET environment variable for multi-instance deployments.");
@@ -114,6 +146,9 @@ export async function setupAuth(app: Express) {
 
   // Session duration configuration (1 week)
   const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60;
+
+  const sameSite = sanitizeSameSite(process.env.SESSION_COOKIE_SAMESITE || "Lax");
+  const auth0SecureCookie = sameSite === "None" ? true : isProduction;
 
   // Configure Auth0
   const config = {
@@ -140,8 +175,8 @@ export async function setupAuth(app: Express) {
       absoluteDuration: SESSION_DURATION_SECONDS,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Lowercase for consistency
+        secure: auth0SecureCookie,
+        sameSite, // Must be exactly "Lax", "Strict", or "None"
       },
       store: process.env.DATABASE_URL 
         ? (() => {
