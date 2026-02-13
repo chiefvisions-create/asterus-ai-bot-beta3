@@ -137,7 +137,7 @@ export async function setupAuth(app: Express) {
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+        sameSite: 'lax',
       },
       store: process.env.DATABASE_URL 
         ? (() => {

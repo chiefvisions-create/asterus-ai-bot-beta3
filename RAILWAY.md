@@ -234,6 +234,11 @@ If authentication is not working:
    - Ensure `AUTH0_SECRET` is set and consistent across deployments
    - For multiple instances, all instances must use the same `AUTH0_SECRET`
    - Check that `DATABASE_URL` is set for persistent session storage
+   - **Note**: The application is configured with proper cookie settings for Railway's proxy environment, including:
+     - `httpOnly: true` - Prevents client-side JavaScript access
+     - `secure: true` - Ensures cookies are only sent over HTTPS in production
+     - `sameSite: 'lax'` - Provides CSRF protection while allowing authentication flows
+   - These settings ensure sessions persist correctly after Auth0 callback redirects
 
 ## Monitoring and Logs
 
