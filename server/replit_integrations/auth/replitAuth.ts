@@ -61,6 +61,7 @@ export async function setupAuth(app: Express) {
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     }));
@@ -133,6 +134,11 @@ export async function setupAuth(app: Express) {
     session: {
       rolling: true,
       rollingDuration: 7 * 24 * 60 * 60, // 1 week in seconds
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      },
       store: process.env.DATABASE_URL 
         ? (() => {
             const pgStore = connectPg(session);
