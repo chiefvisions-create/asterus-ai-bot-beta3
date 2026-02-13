@@ -1,12 +1,12 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { authStorage } from "./storage";
 import { isAuthenticated } from "./replitAuth";
 
 // Shared handler for getting current authenticated user
-async function getCurrentUser(req: any, res: any): Promise<void> {
+async function getCurrentUser(req: Request, res: Response): Promise<void> {
   try {
     // With Auth0, user info is in req.oidc.user
-    const userId = req.oidc?.user?.sub;
+    const userId = (req as any).oidc?.user?.sub;
     if (!userId) {
       return res.status(401).json({ message: "User ID not found" });
     }
