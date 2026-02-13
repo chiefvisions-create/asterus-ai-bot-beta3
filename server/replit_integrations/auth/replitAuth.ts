@@ -157,7 +157,7 @@ export async function setupAuth(app: Express) {
   app.all('/api/login', (req, res, next) => {
     if (req.method !== 'GET') {
       return res.status(405).json({ 
-        message: "Method Not Allowed. Use GET to initiate login.",
+        message: "Method not allowed - use GET to initiate login",
         allowedMethods: ["GET"]
       });
     }
