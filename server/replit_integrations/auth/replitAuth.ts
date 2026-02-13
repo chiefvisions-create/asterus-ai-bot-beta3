@@ -156,6 +156,7 @@ export async function setupAuth(app: Express) {
   // Add 405 handler for unsupported methods on /api/login BEFORE auth middleware
   app.all('/api/login', (req, res, next) => {
     if (req.method !== 'GET') {
+      res.set('Allow', 'GET');
       return res.status(405).json({ 
         message: "Method not allowed - use GET to initiate login",
         allowedMethods: ["GET"]
