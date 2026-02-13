@@ -28,11 +28,84 @@ Quick start:
 
 ### Local Development
 
-1. Clone this repository
-2. Install dependencies: `npm install`
-3. Set up environment variables (see RAILWAY.md for required vars)
-4. Run database migrations: `npm run db:push`
-5. Start development server: `npm run dev`
+#### Prerequisites
+- Node.js 20+ installed
+- PostgreSQL database (local or remote)
+- Auth0 account (for authentication) - optional for initial testing
+
+#### Setup Steps
+
+1. **Clone this repository**
+   ```bash
+   git clone <repository-url>
+   cd asterus-ai-bot-beta3
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` and configure the required variables:
+   
+   **Required:**
+   - `DATABASE_URL` - PostgreSQL connection string
+   
+   **Required for Authentication:**
+   - `AUTH0_SECRET` - Random secret for session encryption (generate with `openssl rand -hex 32`)
+   - `AUTH0_BASE_URL` - Your app's URL (e.g., `http://localhost:5000`)
+   - `AUTH0_ISSUER_BASE_URL` - Your Auth0 tenant URL (e.g., `https://your-tenant.auth0.com`)
+   - `AUTH0_CLIENT_ID` - Auth0 application client ID
+   - `AUTH0_CLIENT_SECRET` - Auth0 application client secret
+   
+   See [RAILWAY.md](./RAILWAY.md) section "Configure Auth0" for detailed Auth0 setup instructions.
+   
+   **Note:** If Auth0 credentials are not configured, the app will start without authentication. You'll see a warning message in the console, and `/api/login` will return information about the missing configuration.
+
+4. **Set up Auth0 (for authentication)**
+   
+   Follow these steps to enable authentication:
+   
+   a. Create a free account at [Auth0](https://auth0.com/)
+   
+   b. Create a new "Regular Web Application"
+   
+   c. In your Auth0 application settings, configure:
+      - **Allowed Callback URLs**: `http://localhost:5000/api/callback`
+      - **Allowed Logout URLs**: `http://localhost:5000`
+      - **Allowed Web Origins**: `http://localhost:5000`
+   
+   d. Copy your Auth0 credentials to `.env`:
+      - Domain → `AUTH0_ISSUER_BASE_URL`
+      - Client ID → `AUTH0_CLIENT_ID`
+      - Client Secret → `AUTH0_CLIENT_SECRET`
+
+5. **Run database migrations**
+   ```bash
+   npm run db:push
+   ```
+
+6. **Start development server**
+   ```bash
+   npm run dev
+   ```
+   
+   The application will be available at `http://localhost:5000`
+
+#### Development Commands
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build for production
+- `npm start` - Run production build
+- `npm run check` - Type check with TypeScript
+- `npm run db:push` - Push database schema changes
 
 ## How to use
 1. **Explore the Terminal**: View your current equity, open positions, and system logs.
