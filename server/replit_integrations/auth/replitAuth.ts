@@ -80,7 +80,7 @@ export async function setupAuth(app: Express) {
       }
     }
     
-    const secureCookie = isProduction;
+    const sessionSecureCookie = isProduction;
     
     const MemoryStore = memorystore(session);
     app.use(session({
@@ -92,7 +92,7 @@ export async function setupAuth(app: Express) {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: secureCookie,
+        secure: sessionSecureCookie,
         sameSite: 'lax', // express-session uses lowercase
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
@@ -148,7 +148,7 @@ export async function setupAuth(app: Express) {
   const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60;
 
   const sameSite = sanitizeSameSite(process.env.SESSION_COOKIE_SAMESITE || "Lax");
-  const secureCookie = sameSite === "None" ? true : isProduction;
+  const auth0SecureCookie = sameSite === "None" ? true : isProduction;
 
   // Configure Auth0
   const config = {
@@ -175,8 +175,8 @@ export async function setupAuth(app: Express) {
       absoluteDuration: SESSION_DURATION_SECONDS,
       cookie: {
         httpOnly: true,
-        secure: secureCookie,
-        sameSite: sameSite, // Must be exactly "Lax", "Strict", or "None"
+        secure: auth0SecureCookie,
+        sameSite, // Must be exactly "Lax", "Strict", or "None"
       },
       store: process.env.DATABASE_URL 
         ? (() => {
