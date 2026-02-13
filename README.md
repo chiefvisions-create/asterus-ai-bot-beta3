@@ -71,21 +71,25 @@ Quick start:
 
 4. **Set up Auth0 (for authentication)**
    
-   Follow these steps to enable authentication:
+   This project is pre-configured with an Auth0 application. Follow these steps:
    
-   a. Create a free account at [Auth0](https://auth0.com/)
+   a. **For Local Development:**
+      - Use the provided Auth0 tenant: `dev-ejjwtoxn7b3krvga.us.auth0.com`
+      - Client ID: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
    
-   b. Create a new "Regular Web Application"
+   b. **Configure Auth0 Application Settings:**
+      - In Auth0 Dashboard, navigate to the application with the above Client ID
+      - Add to the application settings:
+        - **Allowed Callback URLs**: `http://localhost:5000/api/callback`
+        - **Allowed Logout URLs**: `http://localhost:5000`
+        - **Allowed Web Origins**: `http://localhost:5000`
    
-   c. In your Auth0 application settings, configure:
-      - **Allowed Callback URLs**: `http://localhost:5000/api/callback`
-      - **Allowed Logout URLs**: `http://localhost:5000`
-      - **Allowed Web Origins**: `http://localhost:5000`
+   c. **Set your local environment variables in `.env`:**
+      - `AUTH0_ISSUER_BASE_URL`: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
+      - `AUTH0_CLIENT_ID`: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+      - `AUTH0_CLIENT_SECRET`: Contact the project admin for the client secret value
    
-   d. Copy your Auth0 credentials to `.env`:
-      - Domain → `AUTH0_ISSUER_BASE_URL`
-      - Client ID → `AUTH0_CLIENT_ID`
-      - Client Secret → `AUTH0_CLIENT_SECRET`
+   **Alternative:** You can also create your own Auth0 application if you prefer. See [RAILWAY.md](./RAILWAY.md) for detailed Auth0 setup instructions.
 
 5. **Run database migrations**
    ```bash

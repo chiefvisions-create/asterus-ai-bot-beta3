@@ -79,37 +79,39 @@ railway run npm run db:push
 
 ### 4. Configure Auth0 (Required for Authentication)
 
-To enable authentication, you need to set up an Auth0 application:
+This project is pre-configured with an Auth0 application. Follow these steps to deploy:
 
-1. **Create an Auth0 Account**
-   - Go to [Auth0](https://auth0.com/) and sign up or log in
-   - Create a new tenant if you don't have one
+1. **Auth0 Application Details**
+   - **Auth0 Domain**: `dev-ejjwtoxn7b3krvga.us.auth0.com`
+   - **Client ID**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - **Client Secret**: Available separately (see step 3 below)
 
-2. **Create a New Application**
-   - In Auth0 Dashboard, go to "Applications" → "Applications"
-   - Click "Create Application"
-   - Choose "Regular Web Applications"
-   - Name it (e.g., "Astraeus Trading Bot")
-
-3. **Configure Application Settings**
-   - In your Auth0 application settings, add these URLs:
+2. **Configure Application Settings in Auth0**
+   - In Auth0 Dashboard, navigate to the application with Client ID `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - Update the following URLs to match your Railway domain:
      - **Allowed Callback URLs**: `https://your-app.railway.app/api/callback`
      - **Allowed Logout URLs**: `https://your-app.railway.app`
      - **Allowed Web Origins**: `https://your-app.railway.app`
    - Replace `your-app.railway.app` with your actual Railway domain
 
-4. **Add Environment Variables to Railway**
-   - Copy the following from your Auth0 application settings:
-     - Domain → `AUTH0_ISSUER_BASE_URL` (e.g., `https://your-tenant.auth0.com`)
-     - Client ID → `AUTH0_CLIENT_ID`
-     - Client Secret → `AUTH0_CLIENT_SECRET`
-   - Generate a random secret for `AUTH0_SECRET`:
+3. **Add Environment Variables to Railway**
+   
+   Set the following environment variables in Railway:
+   
+   - **`AUTH0_ISSUER_BASE_URL`**: `https://dev-ejjwtoxn7b3krvga.us.auth0.com`
+   - **`AUTH0_CLIENT_ID`**: `ME9UbyrFx2l029rW8Ai9asSC4T62k2Ao`
+   - **`AUTH0_CLIENT_SECRET`**: `h_rW3rvJH6xjHrgmjSA46HgCPXY5lUXJR_JlQEbbxvnrK5dRdKl3gJs5m_rW7MwB`
+     
+     ⚠️ **IMPORTANT**: Set this as a Railway environment variable or GitHub secret. **Never commit this value to the repository.**
+   
+   - **`AUTH0_SECRET`**: Generate a random secret:
      ```bash
      openssl rand -hex 32
      ```
-   - Set `AUTH0_BASE_URL` to your Railway app URL (e.g., `https://your-app.railway.app`)
+   
+   - **`AUTH0_BASE_URL`**: Set to your Railway app URL (e.g., `https://your-app.railway.app`)
 
-5. **Redeploy**
+4. **Redeploy**
    - After adding the environment variables, Railway will automatically redeploy
    - Authentication will now be enabled
 
