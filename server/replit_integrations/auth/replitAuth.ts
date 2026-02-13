@@ -145,7 +145,7 @@ export async function setupAuth(app: Express) {
             const pgStore = connectPg(session);
             return new pgStore({
               conString: process.env.DATABASE_URL,
-              createTableIfMissing: false,
+              createTableIfMissing: true, // Auto-create sessions table if missing
               ttl: 7 * 24 * 60 * 60, // 1 week in seconds
               tableName: "sessions",
             }) as any; // Type cast: connect-pg-simple Store is compatible but has different type signature
